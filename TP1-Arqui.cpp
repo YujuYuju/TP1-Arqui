@@ -2,6 +2,8 @@
 #include <mpi.h>
 #include <stdio.h>
 #include <math.h>
+#include <stdlib.h>     /* srand, rand */
+#include <time.h>       /* time */
 
 int*  crear_Fila_de_matriz(int numero_celdas) {
     int* fila = new int[numero_celdas];
@@ -15,7 +17,8 @@ int*  crear_Fila_de_matriz(int numero_celdas) {
 int main(int argc,char **argv)
 {
     int n = 0, myid, numprocs, i;
-    
+     /* initialize random seed: */
+	srand (time(NULL));
     double mypi, pi, h, sum, x;
     double startwtime, endwtime;
     int  namelen;
@@ -40,23 +43,33 @@ int main(int argc,char **argv)
     if (myid == 0){
         startwtime = MPI_Wtime();
         while (n <= 0){
-            printf("Digite el numero n:  ");
+            printf("Digite el numero n: \n (debe ser un multiplo de la cantidad de procesos que definio)");
             fflush(stdout);
             
             scanf("%d",&n);
-        }
+        
         int** la_matriz;
         la_matriz = new int* [n];
-        
+		int* el_vector;
+		el_vector = new int [n];
+        int* el_vector_Q;
+		el_vector_Q = new int [n];
+		
+		//Matriz M
+		//Se crean las filas de la matriz M
         for (int i=0; i<n; i++){
             la_matriz[i] = crear_Fila_de_matriz(n);
         }
+		//Se llenan con random las filas de la matriz M
         for (int j=0; j<n; j++){
             int* la_fila = la_matriz[j];
             for (int i=0; i<n; i++){
-                la_fila[i] = 22;
+                la_fila[i] = rand() % 10;
             }
         }
+		//Se despliega la matriz M
+		printf("La Matriz M es: ");
+		printf("\n");
         for (int j=0; j<n; j++){
             int* la_fila = la_matriz[j];
             for (int i=0; i<n; i++){
@@ -64,6 +77,24 @@ int main(int argc,char **argv)
             }
             printf("\n");
         }
+		//Vector V
+		//Se crean la fila del vector V
+		el_vector = crear_Fila_de_matriz(n);
+		//Se llenan con random la fila del vector V
+		for (int i=0; i<n; i++){
+                el_vector[i] = rand() % 10;
+            }
+		
+		//Se despliega el vector V
+		printf("La Vector V es: ");
+		printf("\n");
+            for (int i=0; i<n; i++){
+                printf("%d  ", el_vector[i]);
+            }
+
+		//Vector V
+		//Se crean la fila del vector Q
+		el_vector_Q = crear_Fila_de_matriz(n);		
     }
     
     if (myid == 0){
