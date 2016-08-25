@@ -1,4 +1,3 @@
-
 #include <mpi.h>
 #include <stdio.h>
 #include <math.h>
@@ -14,93 +13,104 @@ int*  crear_Fila_de_matriz(int numero_celdas) {
         return fila;
     }
 }
+
 int main(int argc,char **argv)
 {
-    int n = 0, myid, numprocs, i;
-     /* initialize random seed: */
-	srand (time(NULL));
-    double mypi, pi, h, sum, x;
+    int n = 0, myid, numprocs;
+	srand (time(NULL)); /* initialize random seed: */
+	
     double startwtime, endwtime;
-    int  namelen;
-    char processor_name[MPI_MAX_PROCESSOR_NAME];
+	int* el_vector_V;	//todos los procesos tienen al vector V. Lo necesitan para calcular Q.
+	int* el_vector_Q;
+	
+	int* parcial_de_M;
+	int Q_sub_i = 0;
+	int indice_columna = 0;
     
-    MPI_Init(&argc,&argv); /*  Se inicia el trabajo con MPI */
-    
-    MPI_Comm_size(MPI_COMM_WORLD,&numprocs); /*  MPI almacena en numprocs el número total de procesos que se pusieron a correr */
-    
-    MPI_Comm_rank(MPI_COMM_WORLD,&myid); /*  MPI almacena en myid la identificación del proceso actual */
-    
-    MPI_Get_processor_name(processor_name,&namelen);
-    
-    fprintf(stdout,"Proceso %d de %d en %s\n", myid, numprocs, processor_name); /*  Cada proceso despliega su identificación y el nombre de la computadora en la que corre*/
-    
-    MPI_Barrier(MPI_COMM_WORLD); /* Barrera de sincronizacion. Hasta que todos los procesos  alcancen este llamado ninguno puede proseguir.*/
-    
-    
-    
-    
-    
+    MPI_Init(&argc,&argv); 						/*  Inicia el trabajo con MPI */
+    MPI_Comm_size(MPI_COMM_WORLD,&numprocs);	/*  numprocs almacena número de procesos que puso usuario*/
+    MPI_Comm_rank(MPI_COMM_WORLD,&myid);		/*  MPI almacena en myid la identificación del proceso actual */
+	MPI_Status status;
+
     if (myid == 0){
         startwtime = MPI_Wtime();
-        while (n <= 0){
-            printf("Digite el numero n: \n (debe ser un multiplo de la cantidad de procesos que definio)");
+		while (n % numprocs != 0) { //se ve si n es múltiplo de cantidad de procesos
+			printf("Digite el numero n (debe ser un multiplo de la cantidad de procesos):\n");
             fflush(stdout);
-            
             scanf("%d",&n);
-        
-        int** la_matriz;
-        la_matriz = new int* [n];
-		int* el_vector;
-		el_vector = new int [n];
-        int* el_vector_Q;
+		}
+		
+		int** la_matriz;
+		la_matriz = new int* [n];
+		el_vector_V = new int [n];
 		el_vector_Q = new int [n];
 		
-		//Matriz M
-		//Se crean las filas de la matriz M
-        for (int i=0; i<n; i++){
-            la_matriz[i] = crear_Fila_de_matriz(n);
-        }
+		//Matriz M-----------------------------------------------------------------
+		for (int i=0; i<n; i++){
+			la_matriz[i] = crear_Fila_de_matriz(n);
+		}
 		//Se llenan con random las filas de la matriz M
-        for (int j=0; j<n; j++){
-            int* la_fila = la_matriz[j];
-            for (int i=0; i<n; i++){
-                la_fila[i] = rand() % 10;
-            }
-        }
+		for (int j=0; j<n; j++){
+			int* la_fila = la_matriz[j];
+			for (int i=0; i<n; i++){
+				la_fila[i] = rand() % 10;
+			}
+		}
 		//Se despliega la matriz M
 		printf("La Matriz M es: ");
 		printf("\n");
-        for (int j=0; j<n; j++){
-            int* la_fila = la_matriz[j];
-            for (int i=0; i<n; i++){
-                printf("%d  ", la_fila[i]);
-            }
-            printf("\n");
-        }
-		//Vector V
-		//Se crean la fila del vector V
-		el_vector = crear_Fila_de_matriz(n);
+		for (int j=0; j<n; j++){
+			int* la_fila = la_matriz[j];
+			for (int i=0; i<n; i++){
+				printf("%d  ", la_fila[i]);
+			}
+			printf("\n");
+		}
+		
+		
+		//Vector V-----------------------------------------------------------------
+		el_vector_V = crear_Fila_de_matriz(n);
 		//Se llenan con random la fila del vector V
 		for (int i=0; i<n; i++){
-                el_vector[i] = rand() % 10;
-            }
-		
+			el_vector_V[i] = rand() % 10;
+		}
 		//Se despliega el vector V
 		printf("La Vector V es: ");
 		printf("\n");
-            for (int i=0; i<n; i++){
-                printf("%d  ", el_vector[i]);
-            }
+		for (int i=0; i<n; i++){
+			printf("%d  ", el_vector_V[i]);
+		}
 
-		//Vector V
+		//Vector Q----------------------------------------------------------------
 		//Se crean la fila del vector Q
-		el_vector_Q = crear_Fila_de_matriz(n);		
-    }
+		el_vector_Q = crear_Fila_de_matriz(n);
+		//Asignación de filas para cada proceso
+		for (int i=0; i<n; i++){
+			for (int j=0; j<numprocs; j++){
+				MPI_Send(la_matriz[i], n, MPI_INT, j, 55, MPI_COMM_WORLD);
+				MPI_Send(&i, 1, MPI_INT, indice_columna, 56, MPI_COMM_WORLD);
+			}
+		}		
+	}
+	//MPI_Barrier(MPI_COMM_WORLD); /* Barrera. */
+
+	//Todos los procesos hacen lo siguiente------------------------------------------------------------
+	MPI_Bcast(el_vector_V, n, MPI_INT, 0, MPI_COMM_WORLD);	//manda el contenido de el_vector_V a todos
+
+	//Calculo de Q
+	MPI_Recv(parcial_de_M, n, MPI_INT, 0, 55, MPI_COMM_WORLD, &status);
+	MPI_Recv(&indice_columna, 1, MPI_INT, 0, 56, MPI_COMM_WORLD, &status);
+	
+	for (int i=0; i<n; i++){
+		Q_sub_i += parcial_de_M[i]*el_vector_V[i];
+	}
+	
+	MPI_Barrier(MPI_COMM_WORLD); /* Barrera. */
+	MPI_Reduce(&Q_sub_i, &el_vector_Q[indice_columna], 1, MPI_INT, MPI_SUM, 0, MPI_COMM_WORLD);
     
     if (myid == 0){
-        endwtime = MPI_Wtime(); /* Se toma el tiempo actual, para luego calcular la duración del cálculo por 
-                                 diferencia con el tiempo inicial*/
-        printf("wall clock time = %f\n", endwtime-startwtime);
+        endwtime = MPI_Wtime();
+        printf("Tiempo de ejecución = %f\n", endwtime-startwtime);
         fflush( stdout );
     }
     
