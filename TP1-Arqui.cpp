@@ -1,9 +1,18 @@
-#include <mpi.h>
+﻿#include <mpi.h>
 #include <stdio.h>
 #include <math.h>
 #include <stdlib.h>     /* srand, rand */
 #include <time.h>       /* time */
 
+int*  crear_Fila_de_matriz(int numero_celdas) {
+    int* fila = new int[numero_celdas];
+    if (fila == NULL) {
+        printf("Error al asignar memoria.");
+        return NULL;
+    } else {
+        return fila;
+    }
+}
 
 int main(int argc,char **argv)
 {
@@ -11,21 +20,18 @@ int main(int argc,char **argv)
 	srand (time(NULL)); /* initialize random seed: */
 	
     double startwtime, endwtime;
+	int* el_vector_V;	//todos los procesos tienen al vector V. Lo necesitan para calcular Q.
+	int* el_vector_Q;
 	
-	int la_matriz[n][n];
-	int el_vector_Q[n];
-	int el_vector_V[n];	//todos los procesos tienen al vector V.
-	int parcial_de_M[n];
-	
+	int* parcial_de_M;
+	int Q_sub_i = 0;
+	int indice_columna = 0;
     
     MPI_Init(&argc,&argv); 						/*  Inicia el trabajo con MPI */
     MPI_Comm_size(MPI_COMM_WORLD,&numprocs);	/*  numprocs almacena número de procesos que puso usuario*/
     MPI_Comm_rank(MPI_COMM_WORLD,&myid);		/*  MPI almacena en myid la identificación del proceso actual */
 	MPI_Status status;
-	int sendcounts[numprocs];  /* nuevo para Scatterv  para n procesos */
-    int displs[numprocs]; 
-	
-	
+	MPI_Request req;
 
     if (myid == 0){
         startwtime = MPI_Wtime();
@@ -40,78 +46,81 @@ int main(int argc,char **argv)
 			}
 		}
 		
-
+		int** la_matriz;
+		la_matriz = new int* [n];
+		el_vector_V = new int [n];
+		el_vector_Q = new int [n];
+		
 		//Matriz M-----------------------------------------------------------------
 		for (int i=0; i<n; i++){
-			for (int j=0; j<n; j++){
-				la_matriz[i][j] = rand() % 10;
-			}
+			la_matriz[i] = crear_Fila_de_matriz(n);
 		}
+		//Se llenan con random las filas de la matriz M
+		for (int j=0; j<n; j++){
+			int* la_fila = la_matriz[j];
+			for (int i=0; i<n; i++){
+				la_fila[i] = rand() % 10;
+			}
+			la_matriz[j]=la_fila;
+		} 
+		
+			
 		//Se despliega la matriz M
 		printf("La Matriz M es: ");
 		printf("\n");
-		for (int i=0; i<n; i++){
-			for (int j=0; j<n; j++){
-				printf("%d  ", la_matriz[i][j]);
+		for (int j=0; j<n; j++){
+			int* la_fila = la_matriz[j];
+			for (int i=0; i<n; i++){
+				printf("%d  ", la_fila[i]);
 			}
 			printf("\n");
 		}
 		
+		
 		//Vector V-----------------------------------------------------------------
+		el_vector_V = crear_Fila_de_matriz(n);
+		//Se llenan con random la fila del vector V
 		for (int i=0; i<n; i++){
 			el_vector_V[i] = rand() % 10;
 		}
 		//Se despliega el vector V
-		printf("La Vector V es: ");
+		printf("El Vector V es: ");
 		printf("\n");
 		for (int i=0; i<n; i++){
 			printf("%d  ", el_vector_V[i]);
 		}
-		printf("\n");
+
+		//Vector Q----------------------------------------------------------------
+		//Se crean la fila del vector Q
+		el_vector_Q = crear_Fila_de_matriz(n);
+		
+		//Asignación de filas para cada proceso
+		for (int i=0; i<n; i++){
+			for (int j=0; j<numprocs; j++){
+				MPI_Send(la_matriz[i], n, MPI_INT, j, 55, MPI_COMM_WORLD);
+				MPI_Send(&i, 1, MPI_INT, indice_columna, 56, MPI_COMM_WORLD);
+			}
+		}
 	}
-	 
+	//MPI_Barrier(MPI_COMM_WORLD); /* Barrera. */
+
 	//Todos los procesos hacen lo siguiente------------------------------------------------------------
-	MPI_Bcast(&n, 1, MPI_INT, 0, MPI_COMM_WORLD);
-	MPI_Bcast(el_vector_V, n, MPI_INT, 0, MPI_COMM_WORLD);	
-	
-	//Vector Q
-	for (int i = 0; i < numprocs; i++){
-		sendcounts[i]= n + i;
-		displs[i] = i*n - i;
-	}
+	MPI_Bcast(el_vector_V, n, MPI_INT, 0, MPI_COMM_WORLD);	//manda el contenido de el_vector_V a todos
 
-	int Q_parcial[n];
-	MPI_Scatterv(la_matriz, sendcounts,displs, MPI_INT, parcial_de_M, sendcounts[myid], MPI_INT, 0, MPI_COMM_WORLD);
-	
-
-	printf("La fila de M es: ");
-	printf("\n");
-	for (int i=0; i<n; i++){
-		printf("%d  ", parcial_de_M[i]);
-	}
-	printf("\n");
-	
 	
 	//Calculo de Q
-	for (int i=0; i<n; i++){
-		for (int j=0; j<n; j++){
-			Q_parcial[i] += parcial_de_M[j]*el_vector_V[j];
-		}
+	MPI_Recv(parcial_de_M, n, MPI_INT, 0, 55, MPI_COMM_WORLD, &status);
+	MPI_Recv(&indice_columna, 1, MPI_INT, 0, 56, MPI_COMM_WORLD, &status);
+	
+	
+	/* for (int i=0; i<n; i++){
+		Q_sub_i += parcial_de_M[i]*el_vector_V[i];
 	}
 	
-	
 	MPI_Barrier(MPI_COMM_WORLD);
-	MPI_Gather(Q_parcial, n, MPI_INT, el_vector_Q, n, MPI_INT, 0, MPI_COMM_WORLD);
-	
+	MPI_Reduce(&Q_sub_i, &el_vector_Q[indice_columna], 1, MPI_INT, MPI_SUM, 0, MPI_COMM_WORLD); */
     
     if (myid == 0){
-/* 		printf("La Vector Q es: ");
-		printf("\n");
-		for (int i=0; i<n; i++){
-			printf("%d  ", el_vector_Q[i]);
-		}
-		printf("\n"); */
-	
         endwtime = MPI_Wtime();
         printf("Tiempo de ejecución = %f\n", endwtime-startwtime);
         fflush( stdout );
