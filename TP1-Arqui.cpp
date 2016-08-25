@@ -31,13 +31,19 @@ int main(int argc,char **argv)
     MPI_Comm_size(MPI_COMM_WORLD,&numprocs);	/*  numprocs almacena número de procesos que puso usuario*/
     MPI_Comm_rank(MPI_COMM_WORLD,&myid);		/*  MPI almacena en myid la identificación del proceso actual */
 	MPI_Status status;
+	MPI_Request req;
 
     if (myid == 0){
         startwtime = MPI_Wtime();
-		while (n % numprocs != 0) { //se ve si n es múltiplo de cantidad de procesos
+		while (n<=0) { //se ve si n es múltiplo de cantidad de procesos
 			printf("Digite el numero n (debe ser un multiplo de la cantidad de procesos):\n");
             fflush(stdout);
             scanf("%d",&n);
+			if ((n % numprocs) == 0){
+				break;
+			} else {
+				n=0;
+			}
 		}
 		
 		int** la_matriz;
@@ -84,29 +90,32 @@ int main(int argc,char **argv)
 		//Vector Q----------------------------------------------------------------
 		//Se crean la fila del vector Q
 		el_vector_Q = crear_Fila_de_matriz(n);
+		
 		//Asignación de filas para cada proceso
 		for (int i=0; i<n; i++){
 			for (int j=0; j<numprocs; j++){
 				MPI_Send(la_matriz[i], n, MPI_INT, j, 55, MPI_COMM_WORLD);
 				MPI_Send(&i, 1, MPI_INT, indice_columna, 56, MPI_COMM_WORLD);
 			}
-		}		
+		}
 	}
 	//MPI_Barrier(MPI_COMM_WORLD); /* Barrera. */
 
 	//Todos los procesos hacen lo siguiente------------------------------------------------------------
 	MPI_Bcast(el_vector_V, n, MPI_INT, 0, MPI_COMM_WORLD);	//manda el contenido de el_vector_V a todos
 
+	
 	//Calculo de Q
 	MPI_Recv(parcial_de_M, n, MPI_INT, 0, 55, MPI_COMM_WORLD, &status);
 	MPI_Recv(&indice_columna, 1, MPI_INT, 0, 56, MPI_COMM_WORLD, &status);
 	
-	for (int i=0; i<n; i++){
+	
+	/* for (int i=0; i<n; i++){
 		Q_sub_i += parcial_de_M[i]*el_vector_V[i];
 	}
 	
-	MPI_Barrier(MPI_COMM_WORLD); /* Barrera. */
-	MPI_Reduce(&Q_sub_i, &el_vector_Q[indice_columna], 1, MPI_INT, MPI_SUM, 0, MPI_COMM_WORLD);
+	MPI_Barrier(MPI_COMM_WORLD);
+	MPI_Reduce(&Q_sub_i, &el_vector_Q[indice_columna], 1, MPI_INT, MPI_SUM, 0, MPI_COMM_WORLD); */
     
     if (myid == 0){
         endwtime = MPI_Wtime();
