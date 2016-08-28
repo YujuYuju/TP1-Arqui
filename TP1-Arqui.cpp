@@ -11,6 +11,22 @@ void printVector(int row[], int n)
     printf("\n");
 }
 
+bool esPrimo(int n)
+{
+    switch(n)
+    {
+    case 1:
+    case 2:
+    case 3:
+    case 5:
+    case 7:
+        return true;
+        break;
+    default:
+        return false;
+    }
+}
+
 
 int main(int argc,char **argv)
 {
@@ -34,14 +50,10 @@ int main(int argc,char **argv)
             printf("Digite el numero n (debe ser un multiplo de la cantidad de procesos):\n");
             fflush(stdout);
             scanf("%d",&n);
-            if ((n % numprocs) == 0)
-            {
+            if (n >= numprocs && (n % numprocs) == 0)
                 break;
-            }
             else
-            {
                 n=0;
-            }
         }
         printf("%d ", n);
         printf("\n");
@@ -49,8 +61,10 @@ int main(int argc,char **argv)
 
     int la_matriz[n][n];
     int el_vector_Q[n];
+    int el_vector_P[n];
     int el_vector_V[n];	//todos los procesos tienen al vector V.
-    int parcial_de_M[n];
+    int parcial_de_M[n*n/numprocs];
+    int primosGlobales = 0;
     if (myid == 0)
     {
         //Matriz M-----------------------------------------------------------------
@@ -96,7 +110,9 @@ int main(int argc,char **argv)
         displs[i] = i*n*n/numprocs;
     }
 
-    int Q_parcial[n];
+    int Q_parcial[n/numprocs];
+    int P_parcial[n/numprocs];
+    int primosLocales = 0;
     MPI_Scatterv(&la_matriz[0][0], sendcounts,displs, MPI_INT, parcial_de_M, n*n, MPI_INT, 0, MPI_COMM_WORLD);
 
     printf("Las filas de M es para el proceso %d son: ", myid);
@@ -113,7 +129,8 @@ int main(int argc,char **argv)
 
 
     //Calculo de Q
-    Q_parcial[myid] = 0;
+    Q_parcial[0] = 0;
+    P_parcial[0] = 0;
     int index = 0;
     for (int i=0; i<n * n/numprocs; i++)
     {
@@ -121,40 +138,40 @@ int main(int argc,char **argv)
         {
             index += 1;
             Q_parcial[index] = 0;
-         }
+            P_parcial[index] = 0;
+        }
         Q_parcial[index] += el_vector_V[i%n] * parcial_de_M[i];
-        printf("My id: %d \n", myid);
-        printf("I: %d \n", i);
-        printf("El vector V: %d \n", el_vector_V[i%n]);
-        printf("M partial: %d \n", parcial_de_M[i]);
-        printf("Partial Q: %d \n", Q_parcial[index]);
+        if(esPrimo(parcial_de_M[i]))
+        {
+            P_parcial[index] ++;
+            primosLocales++;
+        }
+
     }
 
-    if(myid != 0)
-    {
-        printf("Filling id == 1 \n");
-        Q_parcial[0] = 444;
-        Q_parcial[1] = 555;
-        Q_parcial[2] = 666;
-        Q_parcial[3] = 777;
-    }
-    printVector(Q_parcial, n);
     MPI_Barrier(MPI_COMM_WORLD);
-    int error = MPI_Gather(Q_parcial, n, MPI_INT, el_vector_Q, n, MPI_INT, 0, MPI_COMM_WORLD);
-    printf("Error: %d \n", error);
-
-
+    MPI_Gather(Q_parcial, n/numprocs, MPI_INT, el_vector_Q, n/numprocs, MPI_INT, 0, MPI_COMM_WORLD);
+    MPI_Gather(P_parcial, n/numprocs, MPI_INT, el_vector_P, n/numprocs, MPI_INT, 0, MPI_COMM_WORLD);
+    MPI_Reduce(&primosLocales,&primosGlobales,1,MPI_INT,MPI_SUM,0,MPI_COMM_WORLD);
+    MPI_Barrier(MPI_COMM_WORLD);
     if (myid == 0)
     {
         printf("La Vector Q es: ");
         printf("\n");
         printVector(el_vector_Q, n);
-
+        printf("La Vector P es: ");
+        printf("\n");
+        printVector(el_vector_P, n);
+        printf("Total de primos: ");
+        printf("\n");
+        printf("%d \n", primosGlobales);
         endwtime = MPI_Wtime();
         //printf("Tiempo de ejecución = %f\n", endwtime-startwtime);
         //fflush( stdout );
     }
-
+    MPI_Barrier(MPI_COMM_WORLD);
     MPI_Finalize();
     return 0;
 }
+
+
