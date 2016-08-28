@@ -63,7 +63,6 @@ int main(int argc,char **argv)
     int el_vector_Q[n];
     int el_vector_P[n];
     int el_vector_V[n];	//todos los procesos tienen al vector V.
-    int parcial_de_M[n*n/numprocs];
     int primosGlobales = 0;
     if (myid == 0)
     {
@@ -110,10 +109,21 @@ int main(int argc,char **argv)
         displs[i] = i*n*n/numprocs;
     }
 
+    int parcial_de_M[n*n/numprocs];
+	int parcial_de_M_para_B[n*n];
+	for (int i = 0; i < numprocs; i++)
+    {
+        sendcounts_B[i]= n * n;
+        displs_B[i] = n;
+    }
+	
     int Q_parcial[n/numprocs];
     int P_parcial[n/numprocs];
     int primosLocales = 0;
-    MPI_Scatterv(&la_matriz[0][0], sendcounts,displs, MPI_INT, parcial_de_M, n*n, MPI_INT, 0, MPI_COMM_WORLD);
+	
+	
+    MPI_Scatterv(&la_matriz[0][0], sendcounts,displs, MPI_INT, parcial_de_M, n*n/numprocs, MPI_INT, 0, MPI_COMM_WORLD);
+	MPI_Scatterv(&la_matriz[0][0], sendcounts_B,displs_B, MPI_INT, parcial_de_M_para_B, n*n, MPI_INT, 0, MPI_COMM_WORLD);
 
     printf("Las filas de M es para el proceso %d son: ", myid);
     printf("\n");
