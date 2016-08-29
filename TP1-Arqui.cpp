@@ -41,6 +41,8 @@ int main(int argc,char **argv)
     MPI_Status status;
     int sendcounts[numprocs];  /* nuevo para Scatterv  para n procesos */
     int displs[numprocs];
+	int sendcounts_B[numprocs];  /* nuevo para Scatterv  para n procesos */
+    int displs_B[numprocs];
 
     if (myid == 0)
     {
@@ -89,13 +91,13 @@ int main(int argc,char **argv)
             el_vector_V[i] = rand() % 10;
         }
         //Se despliega el vector V
-        printf("La Vector V es: ");
-        printf("\n");
+        //printf("La Vector V es: ");
+        //printf("\n");
         for (int i=0; i<n; i++)
         {
-            printf("%d  ", el_vector_V[i]);
+            //printf("%d  ", el_vector_V[i]);
         }
-        printf("\n");
+        //printf("\n");
     }
 
     //Todos los procesos hacen lo siguiente------------------------------------------------------------
@@ -113,8 +115,12 @@ int main(int argc,char **argv)
 	int parcial_de_M_para_B[n*n];
 	for (int i = 0; i < numprocs; i++)
     {
-        sendcounts_B[i]= n * n;
-        displs_B[i] = n;
+        sendcounts_B[i]= n * n/numprocs+n;
+		if (i==0){
+			displs_B[i] = i*n*n/numprocs;
+		} else {
+			displs_B[i] = i*n*n/numprocs-n;
+		}
     }
 	
     int Q_parcial[n/numprocs];
@@ -127,13 +133,13 @@ int main(int argc,char **argv)
 
     printf("Las filas de M es para el proceso %d son: ", myid);
     printf("\n");
-    for (int i=0; i<n * n/numprocs; i++)
+    for (int i=0; i<n * n; i++)
     {
         if (i%n==0 && i!=0)
         {
             printf("\n");
         }
-        printf("%d  ", parcial_de_M[i]);
+        printf("%d  ", parcial_de_M_para_B[i]);
     }
     printf("\n");
 
@@ -166,15 +172,15 @@ int main(int argc,char **argv)
     MPI_Barrier(MPI_COMM_WORLD);
     if (myid == 0)
     {
-        printf("La Vector Q es: ");
-        printf("\n");
-        printVector(el_vector_Q, n);
-        printf("La Vector P es: ");
-        printf("\n");
-        printVector(el_vector_P, n);
-        printf("Total de primos: ");
-        printf("\n");
-        printf("%d \n", primosGlobales);
+        //printf("La Vector Q es: ");
+        //printf("\n");
+        //printVector(el_vector_Q, n);
+        //printf("La Vector P es: ");
+        //printf("\n");
+        //printVector(el_vector_P, n);
+        //printf("Total de primos: ");
+        //printf("\n");
+        //printf("%d \n", primosGlobales);
         endwtime = MPI_Wtime();
         //printf("Tiempo de ejecución = %f\n", endwtime-startwtime);
         //fflush( stdout );
