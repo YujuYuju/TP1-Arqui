@@ -210,16 +210,20 @@ int main(int argc,char **argv)
     }
     int index = 0;
 	int indexP = 0;
-    for (int i=0; i<n * n/numprocs; i++)
+	int k = 0;
+	if(myid != 0)
+        k = n;
+    for (int i=k; (i-k)<n * n/numprocs; i++)
     {
-        if (i%n==0 && i!=0)
+        if (i%n==0 && i!=k)
         {
             index += 1;
             Q_parcial[index] = 0;
             indexP = 0;
         }
-        Q_parcial[index] += el_vector_V[i%n] * parcial_de_M[i];
-        if(esPrimo(parcial_de_M[i]))
+
+        Q_parcial[index] += el_vector_V[i%n] * parcial_de_M_para_B[i];
+        if(esPrimo(parcial_de_M_para_B[i]))
         {
             primosLocales++;
 			P_parcial[indexP]++;
