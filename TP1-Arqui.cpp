@@ -139,15 +139,7 @@ int main(int argc,char **argv)
     MPI_Bcast(el_vector_V, n, MPI_INT, 0, MPI_COMM_WORLD);
 
     int parcial_de_M[n*n/numprocs];
-	int* parcial_de_M_para_B;
-	if (myid==0 || myid==numprocs-1)
-	{
-		parcial_de_M_para_B = new int[n * n/numprocs + n];
-	}
-	else
-	{
-		parcial_de_M_para_B = new int[n * n/numprocs + 2*n];
-	}
+	int parcial_de_M_para_B[n * n/numprocs + 2*n];
 
 
     int Q_parcial[n/numprocs];
@@ -247,9 +239,7 @@ int main(int argc,char **argv)
             {
                 if(i >= (n*n)-n)//ultima fila
                 {
-					//if(i%n == 0){printf ("Indice de B parcial: (%d)(%d). Yo tengo: %d\n", i/n, i%n, i+i%n);}
-					//if(i%n != 0){printf ("Indice de B parcial: (%d)(%d). Yo tengo: %d\n", i/n, i%n, i-(i-n)+i%n);}
-                    if(i%n == 0)
+					if(i%n == 0)
                     {
                         B_parcial[i] = parcial_de_M[i-n] + parcial_de_M[i] + parcial_de_M[i+1];
                     }
@@ -264,10 +254,7 @@ int main(int argc,char **argv)
                 }
                 else//medio
                 {
-					//if(i%n == 0){printf ("Indice de B parcial: (%d)(%d). Yo tengo: %d\n", i/n, i%n, i+i%n);}
-					//if(i%n != 0){printf ("Indice de B parcial: (%d)(%d). Yo tengo: %d\n", i/n, i%n, i-(i-n)+i%n);}
-
-                    if(i%n == 0)
+					if(i%n == 0)
                     {
                         B_parcial[i] = parcial_de_M_para_B[i-n] + parcial_de_M_para_B[i+n] + parcial_de_M[i] + parcial_de_M[i+1];
                     }
@@ -283,9 +270,7 @@ int main(int argc,char **argv)
             }
             else//primera
             {
-				//if(i%n == 0){printf ("Indice de B parcial: (%d)(%d). Yo tengo: %d\n", i/n, i%n, i%n);}
-				//if(i%n != 0){printf ("Indice de B parcial: (%d)(%d). Yo tengo: %d\n", i/n, i%n, i%n);}
-                if(i%n == 0)
+				if(i%n == 0)
                 {
                     B_parcial[i] = parcial_de_M[i] + parcial_de_M[i+1] +parcial_de_M_para_B[n];
                 }
@@ -304,9 +289,7 @@ int main(int argc,char **argv)
     {
         for (int i=0; i<n * n/numprocs; i++)//medio
         {
-			//if(i%n == 0){printf ("Indice de B parcial: (%d)(%d). Yo tengo: %d\n", i/n, i%n, i+i%n);}
-			//if(i%n != 0){printf ("Indice de B parcial: (%d)(%d). Yo tengo: %d\n", i/n, i%n,  i-(i-n)+i%n);}
-            if(i%n == 0)
+			if(i%n == 0)
             {
                 B_parcial[i] = parcial_de_M_para_B[i] + parcial_de_M_para_B[i+2*n] + parcial_de_M[i] + parcial_de_M[i+1];
             }
@@ -329,9 +312,7 @@ int main(int argc,char **argv)
                 cantidadFilasRestantes--;
             if(cantidadFilasRestantes == 1)//ultima fila
             {
-				//if(i%n == 0){printf ("Indice de B parcial: (%d)(%d). Yo tengo: %d\n", i/n, i%n, i+i%n);}
-				//if(i%n != 0){printf ("Indice de B parcial: (%d)(%d). Yo tengo: %d\n", i/n, i%n, i+i%n);}
-                if(i%n == 0)
+				if(i%n == 0)
                 {
                     B_parcial[i] = parcial_de_M_para_B[i] + parcial_de_M[i] + parcial_de_M[i+1];
                 }
@@ -346,9 +327,7 @@ int main(int argc,char **argv)
             }
             else//medio
             {
-				//if(i%n == 0){printf ("Indice de B parcial: (%d)(%d). Yo tengo: %d\n", i/n, i%n, i+i%n);}
-				//if(i%n != 0){printf ("Indice de B parcial: (%d)(%d). Yo tengo: %d\n", i/n, i%n, i-(i-n)+i%n);}
-                if(i%n == 0)
+				if(i%n == 0)
                 {
                     B_parcial[i] = parcial_de_M_para_B[i] + parcial_de_M_para_B[i+2*n] + parcial_de_M[i] + parcial_de_M[i+1];
                 }
@@ -368,7 +347,9 @@ int main(int argc,char **argv)
 
     MPI_Barrier(MPI_COMM_WORLD);
     MPI_Gather(Q_parcial, n/numprocs, MPI_INT, el_vector_Q, n/numprocs, MPI_INT, 0, MPI_COMM_WORLD);
-	MPI_Reduce(P_parcial,el_vector_P,n,MPI_INT,MPI_SUM,0,MPI_COMM_WORLD);
+	for (int i=0; i<n; i++){
+		MPI_Reduce(&P_parcial[i],&el_vector_P[i],1,MPI_INT,MPI_SUM,0,MPI_COMM_WORLD);
+	}
 	MPI_Gather(B_parcial, n*n/numprocs, MPI_INT, la_matriz_B, n*n/numprocs, MPI_INT, 0, MPI_COMM_WORLD);
     MPI_Reduce(&primosLocales,&primosGlobales,1,MPI_INT,MPI_SUM,0,MPI_COMM_WORLD);
 
