@@ -41,8 +41,8 @@ int main(int argc,char **argv)
     MPI_Comm_size(MPI_COMM_WORLD,&numprocs);	/*  numprocs almacena número de procesos que puso usuario*/
     MPI_Comm_rank(MPI_COMM_WORLD,&myid);		/*  MPI almacena en myid la identificación del proceso actual */
     MPI_Status status;
-	
-	
+
+
     int* sendcounts;
     int* displs;
     int* sendcounts_B;
@@ -71,15 +71,15 @@ int main(int argc,char **argv)
     int* el_vector_P;
     int el_vector_V[n];
     int primosGlobales = 0;
-	
-	
+
+
     if (myid == 0)	//asignación de memoria y lleno de la_matriz y el_vector_V, y de inf. para scatterv
     {
 		la_matriz = new int[n*n];
 		la_matriz_B = new int[n*n];
 		el_vector_Q = new int[n];
 		el_vector_P = new int[n];
-		
+
         //Matriz M-----------------------------------------------------------------
         for (int i=0; i<n; i++)
             for (int j=0; j<n; j++)
@@ -106,15 +106,15 @@ int main(int argc,char **argv)
         printf("La Vector V es: \n");
         printVector(el_vector_V, n);
         printf("\n");
-		
-		
+
+
 		//Asignación para procesos, de parciales de la matriz----------------------
 		//Asignación del scatterv
 		sendcounts = new int[numprocs];
 		displs = new int[numprocs];
 		sendcounts_B = new int[numprocs];
 		displs_B = new int[numprocs];
-		
+
 		for (int i = 0; i < numprocs; i++)
 		{
 			sendcounts[i]= n * n/numprocs;
@@ -131,15 +131,15 @@ int main(int argc,char **argv)
 		sendcounts_B[n-1]-=n;
     }
 
-	
-	
-	
+
+
+
     //Todos los procesos hacen lo siguiente------------------------------------------------------------
     MPI_Bcast(&n, 1, MPI_INT, 0, MPI_COMM_WORLD);
     MPI_Bcast(el_vector_V, n, MPI_INT, 0, MPI_COMM_WORLD);
 
     int parcial_de_M[n*n/numprocs];
-	int* parcial_de_M_para_B; 
+	int* parcial_de_M_para_B;
 	if (myid==0 || myid==numprocs-1)
 	{
 		parcial_de_M_para_B = new int[n * n/numprocs + n];
@@ -148,18 +148,18 @@ int main(int argc,char **argv)
 	{
 		parcial_de_M_para_B = new int[n * n/numprocs + 2*n];
 	}
-    
+
 
     int Q_parcial[n/numprocs];
     int P_parcial[n];
-    int B_parcial[n/numprocs][n];
+    int B_parcial[n/numprocs*n];
     int primosLocales = 0;
 
 
     MPI_Scatterv(la_matriz, sendcounts,displs, MPI_INT, parcial_de_M, n*n/numprocs, MPI_INT, 0, MPI_COMM_WORLD);
     MPI_Scatterv(la_matriz, sendcounts_B,displs_B, MPI_INT, parcial_de_M_para_B, n*n, MPI_INT, 0, MPI_COMM_WORLD);
 
-	
+
     /*printf("Las filas de M, para el proceso %d son: ", myid);
     printf("\n");
     for (int i=0; i<n*n/numprocs; i++)
@@ -171,7 +171,7 @@ int main(int argc,char **argv)
         printf("%d  ", parcial_de_M[i]);
     }
     printf("\n");*/
-	
+
 	printf("Las filas de M para B para el proceso %d son: ", myid);
     printf("\n");
 	if (myid==0 || myid==numprocs-1)
@@ -186,7 +186,7 @@ int main(int argc,char **argv)
 		}
 		printf("\n");
 	}
-	else 
+	else
 	{
 		for (int i=0; i<n * n/numprocs + 2*n; i++)
 		{
@@ -198,7 +198,7 @@ int main(int argc,char **argv)
 		}
 		printf("\n");
 	}
-    
+
 
 
     //Calculo de Q-----------------------------------------------------------------
@@ -226,11 +226,11 @@ int main(int argc,char **argv)
         }
 		indexP++;
     }
-	
-	
-	
-	
-	
+
+
+
+
+
 	//Calculo de B-----------------------------------------------------------------
 	bool medio = false;
     if(myid == 0)
@@ -247,33 +247,33 @@ int main(int argc,char **argv)
 					//if(i%n != 0){printf ("Indice de B parcial: (%d)(%d). Yo tengo: %d\n", i/n, i%n, i-(i-n)+i%n);}
                     if(i%n == 0)
                     {
-                        B_parcial[i/n][i%n] = parcial_de_M[i-n] + parcial_de_M[i] + parcial_de_M[i+1];
+                        B_parcial[i] = parcial_de_M[i-n] + parcial_de_M[i] + parcial_de_M[i+1];
                     }
                     else if(i%n == (n-1))
                     {
-                        B_parcial[i/n][i%n] = parcial_de_M[i-n] + parcial_de_M[i] + parcial_de_M[i-1];
+                        B_parcial[i] = parcial_de_M[i-n] + parcial_de_M[i] + parcial_de_M[i-1];
                     }
                     else
                     {
-                        B_parcial[i/n][i%n] = parcial_de_M[i-n] + parcial_de_M[i] + parcial_de_M[i-1] + parcial_de_M[i+1];
+                        B_parcial[i] = parcial_de_M[i-n] + parcial_de_M[i] + parcial_de_M[i-1] + parcial_de_M[i+1];
                     }
                 }
                 else//medio
                 {
 					//if(i%n == 0){printf ("Indice de B parcial: (%d)(%d). Yo tengo: %d\n", i/n, i%n, i+i%n);}
 					//if(i%n != 0){printf ("Indice de B parcial: (%d)(%d). Yo tengo: %d\n", i/n, i%n, i-(i-n)+i%n);}
-					
+
                     if(i%n == 0)
                     {
-                        B_parcial[i/n][i%n] = parcial_de_M_para_B[i-n] + parcial_de_M_para_B[i+n] + parcial_de_M[i] + parcial_de_M[i+1];
+                        B_parcial[i] = parcial_de_M_para_B[i-n] + parcial_de_M_para_B[i+n] + parcial_de_M[i] + parcial_de_M[i+1];
                     }
                     else if(i%n == (n-1))
                     {
-                        B_parcial[i/n][i%n] = parcial_de_M_para_B[i-n] + parcial_de_M_para_B[i+n] + parcial_de_M[i] + parcial_de_M[i-1];
+                        B_parcial[i] = parcial_de_M_para_B[i-n] + parcial_de_M_para_B[i+n] + parcial_de_M[i] + parcial_de_M[i-1];
                     }
                     else
                     {
-                        B_parcial[i/n][i%n] = parcial_de_M_para_B[i-n] + parcial_de_M_para_B[i+n] + parcial_de_M[i] + parcial_de_M[i-1] + parcial_de_M[i+1];
+                        B_parcial[i] = parcial_de_M_para_B[i-n] + parcial_de_M_para_B[i+n] + parcial_de_M[i] + parcial_de_M[i-1] + parcial_de_M[i+1];
                     }
                 }
             }
@@ -283,15 +283,15 @@ int main(int argc,char **argv)
 				//if(i%n != 0){printf ("Indice de B parcial: (%d)(%d). Yo tengo: %d\n", i/n, i%n, i%n);}
                 if(i%n == 0)
                 {
-                    B_parcial[i/n][i%n] = parcial_de_M[i] + parcial_de_M[i+1] +parcial_de_M_para_B[n];
+                    B_parcial[i] = parcial_de_M[i] + parcial_de_M[i+1] +parcial_de_M_para_B[n];
                 }
                 else if(i%n == (n-1))
                 {
-                    B_parcial[i/n][i%n] = parcial_de_M[i]+ parcial_de_M[i-1] + parcial_de_M_para_B[n+i];
+                    B_parcial[i] = parcial_de_M[i]+ parcial_de_M[i-1] + parcial_de_M_para_B[n+i];
                 }
                 else
                 {
-                    B_parcial[i/n][i%n] = parcial_de_M[i-1] + parcial_de_M[i] + parcial_de_M[i+1] + parcial_de_M_para_B[i+n];
+                    B_parcial[i] = parcial_de_M[i-1] + parcial_de_M[i] + parcial_de_M[i+1] + parcial_de_M_para_B[i+n];
                 }
             }
         }
@@ -304,15 +304,15 @@ int main(int argc,char **argv)
 			//if(i%n != 0){printf ("Indice de B parcial: (%d)(%d). Yo tengo: %d\n", i/n, i%n,  i-(i-n)+i%n);}
             if(i%n == 0)
             {
-                B_parcial[i/n][i%n] = parcial_de_M_para_B[i] + parcial_de_M_para_B[i+2*n] + parcial_de_M[i] + parcial_de_M[i+1];
+                B_parcial[i] = parcial_de_M_para_B[i] + parcial_de_M_para_B[i+2*n] + parcial_de_M[i] + parcial_de_M[i+1];
             }
             else if(i%n == (n-1))
             {
-                B_parcial[i/n][i%n] = parcial_de_M_para_B[i] + parcial_de_M_para_B[i+2*n] + parcial_de_M[i] + parcial_de_M[i-1];
+                B_parcial[i] = parcial_de_M_para_B[i] + parcial_de_M_para_B[i+2*n] + parcial_de_M[i] + parcial_de_M[i-1];
             }
             else
             {
-                B_parcial[i/n][i%n] = parcial_de_M_para_B[i] + parcial_de_M_para_B[i+2*n] + parcial_de_M[i] + parcial_de_M[i-1] + parcial_de_M[i+1];
+                B_parcial[i] = parcial_de_M_para_B[i] + parcial_de_M_para_B[i+2*n] + parcial_de_M[i] + parcial_de_M[i-1] + parcial_de_M[i+1];
             }
         }
     }
@@ -329,15 +329,15 @@ int main(int argc,char **argv)
 				//if(i%n != 0){printf ("Indice de B parcial: (%d)(%d). Yo tengo: %d\n", i/n, i%n, i+i%n);}
                 if(i%n == 0)
                 {
-                    B_parcial[i/n][i%n] = parcial_de_M_para_B[i] + parcial_de_M[i] + parcial_de_M[i+1];
+                    B_parcial[i] = parcial_de_M_para_B[i] + parcial_de_M[i] + parcial_de_M[i+1];
                 }
                 else if(i%n == (n-1))
                 {
-                    B_parcial[i/n][i%n] = parcial_de_M_para_B[i] + parcial_de_M[i] + parcial_de_M[i-1];
+                    B_parcial[i] = parcial_de_M_para_B[i] + parcial_de_M[i] + parcial_de_M[i-1];
                 }
                 else
                 {
-                    B_parcial[i/n][i%n] = parcial_de_M_para_B[i] + parcial_de_M[i] + parcial_de_M[i-1] + parcial_de_M[i+1];
+                    B_parcial[i] = parcial_de_M_para_B[i] + parcial_de_M[i] + parcial_de_M[i-1] + parcial_de_M[i+1];
                 }
             }
             else//medio
@@ -346,35 +346,33 @@ int main(int argc,char **argv)
 				//if(i%n != 0){printf ("Indice de B parcial: (%d)(%d). Yo tengo: %d\n", i/n, i%n, i-(i-n)+i%n);}
                 if(i%n == 0)
                 {
-                    B_parcial[i/n][i%n] = parcial_de_M_para_B[i] + parcial_de_M_para_B[i+2*n] + parcial_de_M[i] + parcial_de_M[i+1];
+                    B_parcial[i] = parcial_de_M_para_B[i] + parcial_de_M_para_B[i+2*n] + parcial_de_M[i] + parcial_de_M[i+1];
                 }
                 else if(i%n == (n-1))
                 {
-                    B_parcial[i/n][i%n] = parcial_de_M_para_B[i] + parcial_de_M_para_B[i+2*n] + parcial_de_M[i] + parcial_de_M[i-1];
+                    B_parcial[i] = parcial_de_M_para_B[i] + parcial_de_M_para_B[i+2*n] + parcial_de_M[i] + parcial_de_M[i-1];
                 }
                 else
                 {
-                    B_parcial[i/n][i%n] = parcial_de_M_para_B[i] + parcial_de_M_para_B[i+2*n] + parcial_de_M[i] + parcial_de_M[i-1] + parcial_de_M[i+1];
+                    B_parcial[i] = parcial_de_M_para_B[i] + parcial_de_M_para_B[i+2*n] + parcial_de_M[i] + parcial_de_M[i-1] + parcial_de_M[i+1];
                 }
             }
         }
     }
 
 
-    
+
     MPI_Barrier(MPI_COMM_WORLD);
     MPI_Gather(Q_parcial, n/numprocs, MPI_INT, el_vector_Q, n/numprocs, MPI_INT, 0, MPI_COMM_WORLD);
-	for (int i=0; i<n; i++){
-		MPI_Reduce(&P_parcial[i],&el_vector_P[i],1,MPI_INT,MPI_SUM,0,MPI_COMM_WORLD);
-	}
+	MPI_Reduce(P_parcial,el_vector_P,n,MPI_INT,MPI_SUM,0,MPI_COMM_WORLD);
 	MPI_Gather(B_parcial, n*n/numprocs, MPI_INT, la_matriz_B, n*n/numprocs, MPI_INT, 0, MPI_COMM_WORLD);
     MPI_Reduce(&primosLocales,&primosGlobales,1,MPI_INT,MPI_SUM,0,MPI_COMM_WORLD);
-	
+
     MPI_Barrier(MPI_COMM_WORLD);
     if (myid == 0)
     {
 		//Se despliega la matriz B
-        /*printf("La Matriz B es: ");
+        printf("La Matriz B es: ");
         printf("\n");
         for (int i=0; i<n; i+=1)
         {
@@ -383,13 +381,13 @@ int main(int argc,char **argv)
                 printf("%d  ", la_matriz_B[i*n+j]);
             }
             printf("\n");
-        }*/
-		
-        //printf("La Vector Q es:\n"); printVector(el_vector_Q, n);
-        //printf("La Vector P es:\n"); printVector(el_vector_P, n);
-        //printf("Total de primos: %d\n", primosGlobales);
-		
-		
+        }
+
+        printf("La Vector Q es:\n"); printVector(el_vector_Q, n);
+        printf("La Vector P es:\n"); printVector(el_vector_P, n);
+        printf("Total de primos: %d\n", primosGlobales);
+
+
 		//Matriz M
 		std::ofstream matriz_m;
 		matriz_m.open ("M.txt");
@@ -446,7 +444,7 @@ int main(int argc,char **argv)
 		endwtime = MPI_Wtime();
         //printf("Tiempo de ejecución = %f\n", endwtime-startwtime);
         //fflush( stdout );
-		
+
     }
     MPI_Finalize();
     return 0;
